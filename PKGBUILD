@@ -1,0 +1,53 @@
+# custom variables
+_hkgname=hamlet
+_licensefile=LICENSE
+
+# PKGBUILD options/directives
+pkgname=haskell-hamlet
+pkgver=1.2.0
+pkgrel=4
+pkgdesc="Haml-like template files that are compile-time checked (deprecated)"
+url="http://www.yesodweb.com/book/shakespearean-templates"
+license=("MIT")
+arch=('i686' 'x86_64')
+makedepends=()
+depends=("ghc=7.8.4-1"
+         "haskell-shakespeare=2.0.2.2-1")
+options=('strip' 'staticlibs')
+source=("http://hackage.haskell.org/packages/archive/${_hkgname}/${pkgver}/${_hkgname}-${pkgver}.tar.gz")
+install="${pkgname}.install"
+sha256sums=("d1c94b259163cb37f5c02ef3418ebf4caf8d95c8ee00588d4493aa3aae1a8a66")
+
+# PKGBUILD functions
+
+prepare() {
+    cd "${srcdir}/${_hkgname}-${pkgver}"
+    
+    # no cabal patch
+    # no source patch
+}
+
+build() {
+    cd "${srcdir}/${_hkgname}-${pkgver}"
+    
+    runhaskell Setup configure -O --enable-library-profiling --enable-shared \
+        --prefix=/usr --docdir="/usr/share/doc/${pkgname}" \
+        --libsubdir=\$compiler/site-local/\$pkgid
+    runhaskell Setup build
+    # runhaskell Setup haddock --hoogle --html
+    runhaskell Setup register --gen-script
+    runhaskell Setup unregister --gen-script
+    sed -i -r -e "s|ghc-pkg.*unregister[^ ]* |&'--force' |" unregister.sh
+}
+
+package() {
+    cd "${srcdir}/${_hkgname}-${pkgver}"
+    
+    install -D -m744 register.sh   "${pkgdir}/usr/share/haskell/${pkgname}/register.sh"
+    install    -m744 unregister.sh "${pkgdir}/usr/share/haskell/${pkgname}/unregister.sh"
+    install -d -m755 "${pkgdir}/usr/share/doc/ghc/html/libraries"
+    ln -s "/usr/share/doc/${pkgname}/html" "${pkgdir}/usr/share/doc/ghc/html/libraries/${_hkgname}"
+    runhaskell Setup copy --destdir="${pkgdir}"
+    install -D -m644 "${_licensefile}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    rm -f "${pkgdir}/usr/share/doc/${pkgname}/${_licensefile}"
+}
